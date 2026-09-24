@@ -1,55 +1,54 @@
-# Options Studio — Lecture 1 revision
+# Options Studio — integrated version 2
 
-One studio, with the original exploration tools plus a guided Lecture 1 route.
-The five lecture problems cover single options, protective puts, covered calls,
-collars, and calls-based merger replication. They use the revised lecture's fixed
-quotes. The original tools retain their separate model-generated market.
+## Upload and Python version
 
-Each lecture problem includes an objective, the lecture problem, steps, hints,
-worked solutions, applications, and a takeaway. Symbolic calculators accept
-expressions such as `=max(ST-K,0)-premium`, with buttons for inserting symbols
-and transferring results into answer boxes. Reset restores the lecture example.
-Put-call parity and alternative put-based replication remain Lecture 2 topics.
+Use **Python 3.13** in Streamlit deployment Advanced settings. This build was
+tested on Python 3.13.9 with the versions pinned in requirements.txt. Python 3.14
+is not the tested environment and caused the reported PyArrow build failure.
+If the existing deployment uses 3.14, select 3.13 when recreating the deployment.
 
-## Run locally
+Upload all files in this folder into the app repository, including
+`.streamlit/config.toml`. Keep `app.py` as the entry point. If using the ZIP,
+extract it first and upload its contents, not the ZIP itself. There are no new
+dependencies compared with version 1. Do not upload the textbook workspace,
+older_files, homework, or the separate validation folder.
 
-Tested with Python 3.13.9. From this directory:
+## Changes
 
-```shell
+- Removed the separate Lecture 1 examples navigation section.
+- Basics opens with the lecture call problem, then the original single-position
+  exploration. Payoff, profit, and break-even have separate checked answer boxes.
+  The shared calculator has a destination selector; enter one expression at a time.
+- Guided applications offers protective put, covered call, and collar cases,
+  alongside Additional applications, which retains the original four case tabs.
+- Replication problem sets includes the supplied-quote lecture merger problem
+  alongside all original problems and the custom payout laboratory.
+- Strategy builder, strategy design problems, sensitivity analysis, and the
+  knowledge bank remain available. Fixed lecture quotes and model-generated
+  exploration prices are kept separate and labeled.
+- Each integrated example has a reset, hints, worked solution, and takeaway.
+
+## Direct links
+
+Append these suffixes to the deployed app address:
+
+| Example | Suffix |
+|---|---|
+| Single options | `?page=basics&case=single-options` |
+| Protective put | `?page=applications&case=protective-put` |
+| Covered call | `?page=applications&case=covered-call` |
+| Collar | `?page=applications&case=collar` |
+| Merger | `?page=replication&case=merger` |
+
+Old `?page=lecture1&case=...` links also open the appropriate integrated section.
+Public hosting has not been performed or verified for this version.
+
+## Local use
+
+```
 python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-## Upload
-
-Upload the contents of this folder to the root of the studio's GitHub repository.
-Include `.streamlit/config.toml`, even if your file browser hides dot folders.
-Keep the files together; `app.py` is the Streamlit entry point.
-The ZIP contains these same runtime files at its root. Extract it before upload.
-Do not upload the whole textbook project or the `older_files` folder.
-Use Python 3.13 for the tested dependency set. This package has not been deployed
-or tested on the remote hosting service.
-
-## Links from lecture or chapter
-
-Append one of these suffixes to your deployed studio address:
-
-| Problem | URL suffix |
-|---|---|
-| Single options | `?page=lecture1&case=single-options` |
-| Protective put | `?page=lecture1&case=protective-put` |
-| Covered call | `?page=lecture1&case=covered-call` |
-| Collar | `?page=lecture1&case=collar` |
-| Merger | `?page=lecture1&case=merger` |
-
-The live address is not assigned by this package. Students may also select each
-problem within the Lecture 1 menu. Practice solutions are intentionally visible;
-this is an ungraded learning studio, not an assignment submission system.
-
-## Maintenance
-
-`lecture_engine.py` holds the lecture benchmarks and calculations;
-`lecture_pages.py` holds its teaching interface. Other modules retain the
-original exploration tools. Runtime dependencies are pinned to tested versions.
-The sibling `Options_Studio_Lecture1_v1_validation` directory holds local tests
-and the validation record; it is not needed on the hosting service.
+For local tests, copy the sibling validation folder's `tests` directory into this
+folder, install pytest==8.4.2, then run `python -m pytest tests -q`.

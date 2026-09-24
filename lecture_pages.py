@@ -81,29 +81,19 @@ def stock_quotes():
         st.caption('These fixed lecture quotes do not change the separate model-generated market in the original tools.')
 
 
-def render():
-    if 'l1_case' not in st.session_state:
-        requested=st.query_params.get('case','single-options')
-        st.session_state.l1_case=requested if requested in CASES else 'single-options'
-    st.title('Lecture 1 · Insurance and payoff design')
-    st.write('Reproduce the lecture examples, explain the economics, then try another construction. '
-             'Hints and solutions are available whenever you need them. Nothing is graded.')
-    case=st.selectbox('Choose the lecture problem',list(CASES),format_func=CASES.get,
-                      key='l1_case',on_change=changed_case)
-    st.query_params['page']='lecture1'
-    st.query_params['case']=case
-    st.caption('This page’s address includes the selected problem; copy the browser address to return directly to it.')
-    st.button('Reset to lecture example',key='l1_reset',on_click=reset_case)
-    if case=='merger':
-        merger_page()
-    elif case=='single-options':
+def render_case(case):
+    if st.session_state.get('active_example') != case:
+        reset_case()
+        st.session_state.active_example = case
+    st.query_params['page'] = {'single-options':'basics','merger':'replication'}.get(case,'applications')
+    st.query_params['case'] = case
+    st.button('Reset to lecture example', key='l1_reset', on_click=reset_case)
+    if case == 'single-options':
         single_page()
+    elif case == 'merger':
+        merger_page()
     else:
         portfolio_page(case)
-    st.divider()
-    st.info('Continue exploring with the existing Strategy builder, Strategy design problems, '
-            'Replication problem sets, Guided applications, and Knowledge check in the sidebar. '
-            'Those tools use their own model-generated market. Sensitivity analysis becomes central in Lecture 2.')
 
 
 def single_page():
@@ -113,26 +103,26 @@ def single_page():
              'At a terminal stock price of 31, calculate the exercise payoff and simplified profit. '
              'Find the break-even price.')
     stock_quotes()
-    st.markdown('1. Compare the terminal price with the strike.\n2. Calculate the exercise payoff.\n3. Subtract the premium.')
+    st.write('Enter each answer in its own box below. Use the calculator for one calculation at a time, then choose which answer receives the result.')
+    targets = {'l1_payoff':'1 · Exercise payoff ($/share)',
+               'l1_profit':'2 · Simplified profit ($/share)',
+               'l1_breakeven':'3 · Break-even stock price ($/share)'}
+    destination = st.selectbox('Send calculator result to', list(targets), format_func=targets.get, key='l1_destination')
     calculator({'ST':31.,'K':30.,'premium':2.89},
-               {'ST':'Terminal stock price ($/share)','K':'Strike ($/share)','premium':'Initial premium ($/share)'},'l1_answer')
-    answer(-1.89,'Your simplified profit at ST = 31 ($/share)','Exercise can be worthwhile even when the option has lost money overall.')
+               {'ST':'Terminal stock price ($/share)','K':'Strike ($/share)','premium':'Initial premium ($/share)'},destination)
+    for key, expected in [('l1_payoff',1.),('l1_profit',-1.89),('l1_breakeven',32.89)]:
+        st.session_state.setdefault(key,0.0)
+        value=st.number_input(targets[key],step=.01,format='%.2f',key=key)
+        if st.button('Check this answer',key=key+'_check'):
+            if abs(value-expected)<=.005:
+                st.success('Correct.')
+            else:
+                st.info('Not yet. Use the hint or reveal the worked solution below.')
     with st.expander('Hint'):
-        st.write('The premium does not determine whether exercising is worthwhile. It changes your overall profit.')
+        st.write('For payoff, compare 31 with the strike 30: the call pays the positive difference. For simplified profit, subtract the premium from that payoff. For break-even, find the stock price at which the payoff equals the premium.')
     with st.expander('Reveal the worked solution'):
         st.latex(r'C_T=\max(31-30,0)=1,\qquad \Pi_T=1-2.89=-1.89.')
         st.write('Break-even = 30 + 2.89 = 32.89. The short call has the opposite payoff and profit, ignoring trading frictions.')
-    st.subheader('Explore another position')
-    c1,c2,c3=st.columns(3)
-    kind=c1.selectbox('Option',['call','put'],key='l1_kind')
-    side_name=c2.selectbox('Position',['Long','Short'],key='l1_side')
-    strike=c3.selectbox('Strike',[25,30,35],index=1,key='l1_strike')
-    side=1 if side_name=='Long' else -1
-    points=np.linspace(0,60,121)
-    vals=[option_outcome(s,strike,kind,side) for s in points]
-    frame=pd.DataFrame({'Terminal stock price ($)':points,'Payoff':[v[0] for v in vals],'Profit':[v[1] for v in vals]})
-    st.write(f'Supplied premium: {STOCK_QUOTES[strike][kind]:.2f} per share. A short position receives it today.')
-    chart(frame,'Terminal stock price ($)',['Payoff','Profit'],'Dollars per share')
     st.success('What we learned: the buyer owns a right, the writer owes the corresponding payoff, and payoff and profit answer different questions.')
 
 

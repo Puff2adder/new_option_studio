@@ -75,18 +75,23 @@ if st.session_state.get("market_unit_schema") != "percentage_points":
 
 st.sidebar.title("Options Strategy Studio")
 st.sidebar.caption("European options · hypothetical data")
+from lecture_pages import render_case, reset_case
+CASE_ROUTES = {'single-options':'2 · Single positions', 'protective-put':'6 · Guided applications',
+               'covered-call':'6 · Guided applications', 'collar':'6 · Guided applications',
+               'merger':'5 · Replication problem sets'}
 if "studio_navigation" not in st.session_state:
-    st.session_state.studio_navigation = "Lecture 1 examples" if st.query_params.get("page") == "lecture1" else "Studio orientation"
+    requested = st.query_params.get('case')
+    st.session_state.studio_navigation = CASE_ROUTES.get(requested, 'Studio orientation')
+    if requested in ('protective-put','covered-call','collar'):
+        st.session_state.application_choice = requested
+    if requested == 'merger':
+        st.session_state.replication_choice = -1
 def navigation_changed():
-    if st.session_state.studio_navigation == "Lecture 1 examples":
-        st.query_params["page"] = "lecture1"
-    else:
-        for param in ("page", "case"):
-            if param in st.query_params:
-                del st.query_params[param]
+    reset_case()
+    st.query_params.clear()
 navigation = st.sidebar.radio(
     "Learning laboratory",
-    ["Studio orientation", "Lecture 1 examples", "2 · Single positions", "3 · Strategy builder",
+    ["Studio orientation", "2 · Single positions", "3 · Strategy builder",
      "4 · Strategy design problems", "5 · Replication problem sets",
      "6 · Guided applications", "1 · Create the market", "7 · Knowledge check"],
     key="studio_navigation", on_change=navigation_changed,
@@ -97,17 +102,15 @@ navigation = st.sidebar.radio(
 
 )
 st.sidebar.caption("Start with an economic decision. Build a position, inspect its cash flows, then explore sensitivities.")
-if navigation == "Lecture 1 examples":
-    for market_key in ("spot_input", "vol_input", "rate_input", "div_input", "mat_input"):
-        st.session_state[market_key] = st.session_state[market_key]
-    from lecture_pages import render
-    render()
-    st.stop()
 for market_key in ("spot_input","vol_input","rate_input","div_input","mat_input"):
     st.session_state[market_key] = st.session_state[market_key]
 if navigation == "2 · Single positions":
     st.title("1. Basics: explore a single option position")
     hero("Reserve the right to buy before committing your cash", "An investor expects to receive cash in six months and worries that a stock will become more expensive before then. A call can preserve the opportunity to buy at a fixed price, while limiting the option buyer’s loss to the premium.")
+    render_case("single-options")
+    st.divider()
+    st.subheader("Explore other positions and market inputs")
+    st.info("The exploration below uses model-generated premiums. The opening problem uses fixed supplied quotes.")
     st.write("First explore one long call. Then switch to a put or a short position and explain whose right or obligation changes. One option unit covers one share; all prices and cash flows are hypothetical dollars per share.")
     with st.expander("Benchmark inputs and definitions", expanded=False):
         st.caption("S₀: stock price today. σ: annual volatility. r: continuously compounded annual risk-free rate. q: continuous annual dividend yield. T: years until European exercise. These inputs generate the option premiums; no pricing derivation is needed for this exercise.")
@@ -226,13 +229,13 @@ if navigation == "Studio orientation":
     - **Replicate and value:** match a target payout and calculate its cost inside the studio.
     - **Explore and check:** examine sensitivities and test your understanding.
     """)
-    st.info("Begin with Lecture 1 examples to reproduce the lecture’s supplied quotes and merger case. Then use the original tools for broader exploration. This is ungraded practice: hints and worked solutions are available.")
-    st.markdown("**Core now:** option rights and profit, protective puts, covered calls, collars, and calls-based merger replication. **Explore further:** strategy and application menus, replication challenges, and the question bank. **Later:** use the model-generated market and sensitivity analysis alongside Black–Scholes in Lecture 2.")
-    st.caption("The Lecture 1 route uses fixed supplied quotes. The other tools retain their separate model-generated market; the two sets of prices should not be mixed.")
-    def open_lecture():
-        st.session_state.studio_navigation = "Lecture 1 examples"
-        st.query_params["page"] = "lecture1"
-    st.button("Start Lecture 1 examples", on_click=open_lecture, key="start_lecture1")
+    st.info("Begin in Basics with the call payoff, profit, and break-even problem. Then choose protective put, covered call, and collar in Guided applications. Finish with the lecture merger problem in Replication problem sets.")
+    st.markdown("**Explore further:** use the Strategy builder, additional application cases, replication challenges, and Knowledge check. **Later:** examine model-generated prices in Sensitivity analysis alongside Black–Scholes.")
+    st.caption("Lecture problems use fixed supplied quotes. General exploration uses a separate model-generated market, clearly labeled on each activity.")
+    def open_basics():
+        st.session_state.studio_navigation = "2 · Single positions"
+        navigation_changed()
+    st.button("Start with Basics", on_click=open_basics, key="start_basics")
 
 elif navigation == "1 · Create the market":
     st.subheader("Compare the resulting option prices")
@@ -584,16 +587,23 @@ elif navigation == "5 · Replication problem sets":
     high_node = max(strikes[-1] + (strikes[-1] - strikes[-2]), round(1.55 * spot, 2))
     nodes = np.array([0.0] + strikes + [high_node], dtype=float)
     replication_bank = replication_challenges(float(spot), strikes, nodes)
-    replication_options = list(range(len(replication_bank) + 1))
+    replication_options = [-1] + list(range(len(replication_bank) + 1))
     replication_index = st.selectbox(
         "Choose a replication problem",
         replication_options,
+        key="replication_choice", on_change=reset_case,
         format_func=lambda i: (
+            "Lecture merger · negotiated payout (supplied quotes)" if i == -1 else
             f"{replication_bank[i]['difficulty']} · {replication_bank[i]['title']}"
             if i < len(replication_bank)
             else "Open laboratory · Custom piecewise-linear payout"
         ),
     )
+    if replication_index == -1:
+        render_case('merger')
+        st.stop()
+    st.query_params.clear()
+    st.caption("Additional replication problems use the model-generated market.")
     is_custom_replication = replication_index == len(replication_bank)
     if is_custom_replication:
         replication_problem = {
@@ -913,6 +923,18 @@ elif navigation == "5 · Replication problem sets":
     st.caption("This studio handles continuous piecewise-linear payouts. A discontinuous digital payoff requires an approximation with tightly spaced call positions.")
 
 elif navigation == "6 · Guided applications":
+    st.title("5. Guided applications")
+    application_labels = {'protective-put':'Protective put · protect a holding',
+                          'covered-call':'Covered call · exchange upside for premium',
+                          'collar':'Collar · combine a floor with an upside cap',
+                          'additional':'Additional applications · contract choices and business decisions'}
+    application = st.selectbox('Choose an application', list(application_labels),
+                               format_func=application_labels.get, key='application_choice', on_change=reset_case)
+    if application != 'additional':
+        render_case(application)
+        st.stop()
+    st.query_params.clear()
+    st.caption("These additional applications use the model-generated market.")
     case_low, case_high = strikes[2], strikes[-3]
     middle = len(strikes) // 2
     nearby = chain.iloc[max(0, middle - 1): min(len(chain), middle + 2)].copy()
@@ -921,7 +943,6 @@ elif navigation == "6 · Guided applications":
         "Call price": st.column_config.NumberColumn(format="$%.4f"),
         "Put price": st.column_config.NumberColumn(format="$%.4f"),
     }
-    st.title("5. Guided applications")
     hero("Choose a contract from prices and protection", "Each case supplies hypothetical option prices. Recommend a strike by explaining when protection begins, what favorable outcome remains, and what the premium costs.")
     tabs = st.tabs(["Input-cost insurance", "Portfolio protection", "Premium and obligation", "Merger payout"])
     with tabs[0]:
@@ -1047,7 +1068,7 @@ else:
 
 
 st.sidebar.divider()
-st.sidebar.caption("Educational use only. Prices are hypothetical Black-Scholes values, not market quotations or investment advice.")
+st.sidebar.caption("Educational use only. Lecture problems use supplied hypothetical quotes; general exploration uses model-generated prices.")
 
 if navigation != "Studio orientation":
     st.divider()

@@ -9,7 +9,7 @@ replication.py
 strategy.py
 studio_theme.py
 ui.py
-.streamlit/config.toml
 requirements.txt
+.streamlit/config.toml
 README.md
 PUBLIC_FILES.txt
