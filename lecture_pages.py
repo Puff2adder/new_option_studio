@@ -31,7 +31,7 @@ def chart(frame, x, columns, ylabel):
     st.plotly_chart(style_plotly(fig), key='l1_chart', width='stretch', theme=None)
 
 
-def calculator(symbols, definitions, answer_key):
+def calculator(symbols, definitions, answer_key, text_answer=False):
     with st.expander('Calculator · use numbers or financial symbols', expanded=True):
         st.caption('Optional leading =; +, -, *, /, ^, parentheses, exp, sqrt, min and max. No cell addresses required.')
         st.dataframe(pd.DataFrame([{'Symbol':k,'Meaning':definitions.get(k,k),'Value':v}
@@ -54,7 +54,7 @@ def calculator(symbols, definitions, answer_key):
             st.code(expr,language=None)
             st.success(f'Result: {saved[2]:,.6f} (units follow your expression)')
             def transfer():
-                st.session_state[answer_key]=float(saved[2])
+                st.session_state[answer_key]=saved[0] if text_answer else float(saved[2])
             st.button('Use result as my answer',key='l1_transfer',on_click=transfer)
         elif saved:
             st.caption('Inputs or expression changed. Calculate again before transferring a result.')
@@ -103,17 +103,27 @@ def single_page():
              'At a terminal stock price of 31, calculate the exercise payoff and simplified profit. '
              'Find the break-even price.')
     stock_quotes()
-    st.write('Enter each answer in its own box below. Use the calculator for one calculation at a time, then choose which answer receives the result.')
+    st.write('Type a number or an expression directly into each answer box, then click Check this answer. You can use ST, K, and premium. Your expression stays visible. The calculator above the answers is optional.')
     targets = {'l1_payoff':'1 · Exercise payoff ($/share)',
                'l1_profit':'2 · Simplified profit ($/share)',
                'l1_breakeven':'3 · Break-even stock price ($/share)'}
     destination = st.selectbox('Send calculator result to', list(targets), format_func=targets.get, key='l1_destination')
     calculator({'ST':31.,'K':30.,'premium':2.89},
-               {'ST':'Terminal stock price ($/share)','K':'Strike ($/share)','premium':'Initial premium ($/share)'},destination)
+               {'ST':'Terminal stock price ($/share)','K':'Strike ($/share)','premium':'Initial premium ($/share)'},destination,text_answer=True)
     for key, expected in [('l1_payoff',1.),('l1_profit',-1.89),('l1_breakeven',32.89)]:
-        st.session_state.setdefault(key,0.0)
-        value=st.number_input(targets[key],step=.01,format='%.2f',key=key)
+        st.session_state.setdefault(key,'')
+        expression=st.text_input(targets[key],key=key,placeholder='Enter a number or expression',
+                                 help='Arithmetic, parentheses, max, and the symbols ST, K, premium are supported. A leading = is optional.')
         if st.button('Check this answer',key=key+'_check'):
+            if not expression.strip():
+                st.info('Enter a number or expression first.')
+                continue
+            try:
+                value=calculate(expression,{'ST':31.,'K':30.,'premium':2.89})
+            except ValueError as error:
+                st.error(str(error))
+                continue
+            st.caption(f'Your expression evaluates to {value:,.4f} dollars per share.')
             if abs(value-expected)<=.005:
                 st.success('Correct.')
             else:
